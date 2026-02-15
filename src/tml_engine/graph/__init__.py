@@ -1,0 +1,1 @@
+"""OrganizationalGraph computation from Declarations."""

@@ -1,0 +1,21 @@
+TML Coherence Engine
+Copyright (c) 2025 CobraChicken AI
+
+This software is licensed under the MIT License. See LICENSE for details.
+
+---
+
+This project is an implementation of The Missing Layer (TML) specification.
+
+The TML specification — including the manifesto and RFC — is Copyright (c)
+2026 Michael Ferrell and licensed under the Creative Commons
+Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0).
+
+  Specification: https://github.com/CobraChickenAI/themissinglayer
+  License: https://creativecommons.org/licenses/by-sa/4.0/
+
+The TML primitive model (Scope, Domain, Capability, View, Archetype, Policy,
+Connector, Binding, Provenance) and the Declaration structure implemented in
+this software are defined by the TML specification. This implementation is
+original software and is not a derivative work of the specification text.
+Attribution is provided in accordance with CC BY-SA 4.0 requirements.
