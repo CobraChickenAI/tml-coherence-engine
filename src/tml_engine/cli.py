@@ -90,7 +90,28 @@ def extract(
     db: Path = typer.Option(DEFAULT_DB, help="Path to SQLite database"),
 ) -> None:
     """Extract content from a source."""
-    console.print(f"[yellow]Extract from '{source}' — not yet implemented (Stage 3)[/yellow]")
+    if source == "web":
+        if not url:
+            console.print("[red]--url is required for web extraction[/red]")
+            raise typer.Exit(1)
+
+        from tml_engine.extractors.web import WebExtractor
+
+        async def _extract() -> None:
+            extractor = WebExtractor()
+            config: dict = {"base_url": url}
+            if template != "default":
+                config["template_path"] = template
+            console.print(f"[dim]Extracting from {url}...[/dim]")
+            result = await extractor.extract(config)
+            console.print(
+                f"[green]Extracted {len(result.content_blocks)} content blocks "
+                f"from {result.metadata.get('pages_crawled', 0)} pages[/green]"
+            )
+
+        asyncio.run(_extract())
+    else:
+        console.print(f"[yellow]Extract from '{source}' — plugin not yet available[/yellow]")
 
 
 @app.command()
@@ -99,17 +120,66 @@ def interview(
     fill_gaps: bool = typer.Option(False, help="Fill gaps from prior extractions"),
     db: Path = typer.Option(DEFAULT_DB, help="Path to SQLite database"),
 ) -> None:
-    """Run an adaptive interview."""
-    console.print("[yellow]Adaptive interview — not yet implemented (Stage 4)[/yellow]")
+    """Run an adaptive interview (requires ANTHROPIC_API_KEY)."""
+    from tml_engine.extractors.interview import InterviewEngine
+
+    engine = InterviewEngine()
+    state = engine.new_session(identity)
+
+    console.print("\n[bold]TML Coherence Engine — Adaptive Interview[/bold]")
+    console.print(f"[dim]Session: {state.session_id}[/dim]\n")
+
+    opening = engine.get_opening_message(state)
+    console.print(f"[green]Interviewer:[/green] {opening}")
+
+    async def _run_interview() -> None:
+        nonlocal state
+
+        while not engine.is_complete(state):
+            console.print("")
+            try:
+                user_input = input("You: ")
+            except (EOFError, KeyboardInterrupt):
+                console.print("\n[dim]Interview paused.[/dim]")
+                return
+
+            if user_input.strip().lower() in ("quit", "exit", "q"):
+                console.print("[dim]Interview ended by user.[/dim]")
+                return
+
+            try:
+                response, state = await engine.send_message(state, user_input)
+                console.print(f"\n[green]Interviewer:[/green] {response}")
+            except Exception as e:
+                console.print(f"[red]Error: {e}[/red]")
+                console.print("[dim]Make sure ANTHROPIC_API_KEY is set.[/dim]")
+                return
+
+        console.print("\n[bold green]Interview complete![/bold green]")
+        result = engine.to_extraction_result(state)
+        console.print(
+            f"[dim]Extracted {len(result.content_blocks)} content blocks "
+            f"from {result.metadata.get('total_messages', 0)} messages[/dim]"
+        )
+
+    asyncio.run(_run_interview())
 
 
 @app.command()
 def confirm(
-    identity: str = typer.Option(..., help="Email of the person to confirm"),
+    identity: str = typer.Option("", help="Email of the person to confirm (empty for mock data)"),
     db: Path = typer.Option(DEFAULT_DB, help="Path to SQLite database"),
+    mock: bool = typer.Option(False, help="Use mock data for testing"),
 ) -> None:
     """Launch the confirmation surface (Textual TUI)."""
-    console.print("[yellow]Confirmation TUI — not yet implemented (Stage 2)[/yellow]")
+    from tml_engine.confirmation.app import run_confirmation
+
+    if mock or not identity:
+        console.print("[dim]Launching with mock data...[/dim]")
+        run_confirmation(declaration=None)
+    else:
+        console.print(f"[dim]Launching confirmation for {identity}...[/dim]")
+        run_confirmation(declaration=None)  # TODO: load Declaration from storage
 
 
 @app.command()
