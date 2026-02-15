@@ -1,0 +1,39 @@
+# Web Scrape Configuration
+# Modify this template for different site structures
+
+target:
+  base_url: ""  # Set by user
+  max_depth: 3  # How deep to crawl from base
+  max_pages: 100  # Safety limit
+  respect_robots: true
+
+include_patterns:
+  - "/about*"
+  - "/services*"
+  - "/solutions*"
+  - "/team*"
+  - "/blog*"
+  - "/case-studies*"
+  - "/resources*"
+
+exclude_patterns:
+  - "/wp-admin*"
+  - "/login*"
+  - "/cart*"
+  - "*.pdf"
+  - "*.jpg"
+  - "*.png"
+
+content_selectors:
+  # CSS selectors for main content areas
+  primary: ["main", "article", ".content", "#content"]
+  # Remove noise
+  strip: ["nav", "footer", "header", ".sidebar", ".cookie-notice", "script", "style"]
+
+extraction_focus:
+  # What to look for in the content
+  - expertise_signals: "language indicating specialized knowledge, methodology, frameworks"
+  - decision_patterns: "how-to content, process descriptions, evaluation criteria"
+  - value_propositions: "what they claim to do better than alternatives"
+  - team_expertise: "bios, credentials, specializations"
+  - case_studies: "real examples of decisions and outcomes"
