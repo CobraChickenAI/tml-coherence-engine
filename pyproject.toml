@@ -84,6 +84,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "src/tml_engine/cli.py" = ["B008"]  # typer.Option in defaults is standard Typer pattern
+"src/tml_engine/confirmation/**" = ["TC002", "RUF012"]  # Textual needs runtime imports + mutable class attrs
 
 [tool.ruff.lint.isort]
 known-first-party = ["tml_engine"]
