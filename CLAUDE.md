@@ -91,7 +91,8 @@ All commands use `uv run` — never activate the venv manually or use bare `pyth
 4. ~~Adaptive Interview: Claude-powered five-phase interview (Scope → Archetype → Domains → Capabilities → Policies/Flows) with gap detection and skill association~~ **DONE**
 5. ~~Identity + Distribution + Organizational Graph: pluggable identity provider, Declaration export, OrganizationalGraph computation, AutomationCandidate scoring~~ **DONE**
 6. Local hardening: confirmation persistence (TUI writes back to storage), end-to-end local workflow validation
-7. Distribution + Integration: textual-web serving, PyPI packaging, Atlassian extractor (first plugin), additional extractors and identity providers as needed — deferred until local tool is solid
+7. Integration plugins: Atlassian extractor (first plugin), additional extractors and identity providers as needed
+8. Distribution: textual-web serving, PyPI packaging — deferred until local tool is solid
 
 ## Current State & Known Gaps
 Stages 1-5 (functional core) are complete. The pipeline is wired end-to-end: extract → structure → persist → confirm → export. Next priority is local hardening (Stage 6):
@@ -99,10 +100,12 @@ Stages 1-5 (functional core) are complete. The pipeline is wired end-to-end: ext
 - **Confirmation persistence** — TUI screens don't write confirmation results back to storage yet (breaks the confirm → export loop)
 - **End-to-end local validation** — run the full flow locally and fix any issues
 
+After local hardening:
+- **Integration plugins** — Atlassian extractor (first plugin), then additional extractors as needed (Stage 7)
+
 Deferred until local tool is solid:
 - **textual-web serving** — the `serve` command is stubbed; needs textual-web integration
 - **PyPI packaging** — project is pip-installable but not published
-- **Integration plugins** — Atlassian extractor not yet built
 
 ## Reference
 - Full spec: `SPEC.md` in project root
