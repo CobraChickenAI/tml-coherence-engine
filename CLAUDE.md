@@ -89,16 +89,20 @@ All commands use `uv run` — never activate the venv manually or use bare `pyth
 2. ~~Confirmation Surface: Textual TUI with all screens (Welcome, Archetype, Domains, Capabilities, Skills, Policies, Edges, Flows, Summary) + widgets. Use mock data.~~ **DONE**
 3. ~~Core Extractors: web scrape + LLM structurer (produces all nine primitive types)~~ **DONE**
 4. ~~Adaptive Interview: Claude-powered five-phase interview (Scope → Archetype → Domains → Capabilities → Policies/Flows) with gap detection and skill association~~ **DONE**
-5. ~~Identity + Distribution + Organizational Graph: pluggable identity provider, Declaration export, OrganizationalGraph computation, AutomationCandidate scoring~~ **DONE** (textual-web + PyPI packaging deferred to Stage 6)
-6. Integration Plugins + Distribution: Atlassian extractor (first plugin), textual-web serving, PyPI packaging, additional extractors and identity providers as needed
+5. ~~Identity + Distribution + Organizational Graph: pluggable identity provider, Declaration export, OrganizationalGraph computation, AutomationCandidate scoring~~ **DONE**
+6. Local hardening: confirmation persistence (TUI writes back to storage), end-to-end local workflow validation
+7. Distribution + Integration: textual-web serving, PyPI packaging, Atlassian extractor (first plugin), additional extractors and identity providers as needed — deferred until local tool is solid
 
 ## Current State & Known Gaps
-Stages 1-5 (functional core) are complete. The pipeline is wired end-to-end: extract → structure → persist → confirm → export. Remaining work:
+Stages 1-5 (functional core) are complete. The pipeline is wired end-to-end: extract → structure → persist → confirm → export. Next priority is local hardening (Stage 6):
 
+- **Confirmation persistence** — TUI screens don't write confirmation results back to storage yet (breaks the confirm → export loop)
+- **End-to-end local validation** — run the full flow locally and fix any issues
+
+Deferred until local tool is solid:
 - **textual-web serving** — the `serve` command is stubbed; needs textual-web integration
 - **PyPI packaging** — project is pip-installable but not published
-- **Confirmation persistence** — TUI screens don't write confirmation results back to storage yet
-- **Integration plugins** — Atlassian extractor (Stage 6) not yet built
+- **Integration plugins** — Atlassian extractor not yet built
 
 ## Reference
 - Full spec: `SPEC.md` in project root
