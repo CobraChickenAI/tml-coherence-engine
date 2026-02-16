@@ -97,6 +97,7 @@ class DomainsScreen(Screen):
         self.query_one("#counter", Static).update(
             f"Domain {self._current_index + 1} of {len(self._assertions)}"
         )
+        self.query_one("#response", ResponseWidget).focus()
 
     def _advance(self) -> None:
         self._current_index += 1
@@ -163,4 +164,4 @@ class DomainsScreen(Screen):
         self._advance()
 
     def on_inline_editor_widget_cancelled(self, event: InlineEditorWidget.Cancelled) -> None:
-        pass
+        self.query_one("#response", ResponseWidget).focus()

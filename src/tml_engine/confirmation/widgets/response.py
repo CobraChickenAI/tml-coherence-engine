@@ -11,8 +11,8 @@ from textual.widget import Widget
 from textual.widgets import Button
 
 
-class ResponseWidget(Widget):
-    """Three-button response: Confirm (Enter), Correct (E), Flag (F)."""
+class ResponseWidget(Widget, can_focus=True):
+    """Three-button response: Confirm (Enter), Edit (E), Flag (F)."""
 
     DEFAULT_CSS = """
     ResponseWidget {
@@ -27,8 +27,8 @@ class ResponseWidget(Widget):
     }
 
     ResponseWidget Button {
-        margin: 0 1;
-        min-width: 16;
+        margin: 0 2;
+        min-width: 20;
     }
 
     ResponseWidget #btn-confirm {
@@ -49,7 +49,7 @@ class ResponseWidget(Widget):
 
     BINDINGS = [
         ("enter", "confirm", "Confirm"),
-        ("e", "correct", "Correct"),
+        ("e", "correct", "Edit"),
         ("f", "flag", "Flag"),
     ]
 
@@ -68,7 +68,7 @@ class ResponseWidget(Widget):
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield Button("Confirm [Enter]", id="btn-confirm", variant="success")
-            yield Button("Correct [E]", id="btn-correct", variant="warning")
+            yield Button("Edit [E]", id="btn-correct", variant="warning")
             yield Button("Flag [F]", id="btn-flag", variant="primary")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
