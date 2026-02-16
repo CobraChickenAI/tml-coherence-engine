@@ -1,8 +1,7 @@
 .PHONY: install test lint fmt check clean
 
 install:  ## Install project with dev dependencies
-	uv pip install -e ".[dev]"
-	uv run pre-commit install
+	uv sync
 
 test:  ## Run tests with coverage
 	uv run pytest --cov --cov-report=term-missing

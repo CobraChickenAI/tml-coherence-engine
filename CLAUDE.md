@@ -48,7 +48,7 @@ Every primitive MUST declare its Scope. Provenance is emitted for all significan
 - `src/tml_engine/export/json.py` — JSON export of Declarations
 - `src/tml_engine/export/yaml.py` — YAML export of Declarations
 - `templates/web_scrape/default.yaml` — default web scrape configuration
-- `tests/` — pytest test suite (153 tests across 13 files)
+- `tests/` — pytest test suite (164 tests across 14 files)
 
 ## Code Style
 - Type hints on all functions and variables
@@ -90,15 +90,12 @@ All commands use `uv run` — never activate the venv manually or use bare `pyth
 3. ~~Core Extractors: web scrape + LLM structurer (produces all nine primitive types)~~ **DONE**
 4. ~~Adaptive Interview: Claude-powered five-phase interview (Scope → Archetype → Domains → Capabilities → Policies/Flows) with gap detection and skill association~~ **DONE**
 5. ~~Identity + Distribution + Organizational Graph: pluggable identity provider, Declaration export, OrganizationalGraph computation, AutomationCandidate scoring~~ **DONE**
-6. ~~Local hardening: confirmation persistence (TUI writes back to storage), end-to-end local workflow validation~~ **DONE** (persistence complete; end-to-end validation remaining)
+6. ~~Local hardening: confirmation persistence (TUI writes back to storage), end-to-end local workflow validation~~ **DONE**
 7. Integration plugins: Atlassian extractor (first plugin), additional extractors and identity providers as needed
 8. Distribution: textual-web serving, PyPI packaging — deferred until local tool is solid
 
 ## Current State & Known Gaps
-Stages 1-6 are complete. The confirm → export loop is now fully wired: every confirm/correct/flag action persists to SQLite in real time, and `build_declaration_from_storage` reconstructs confirmation status from DB columns.
-
-Remaining local hardening:
-- **End-to-end local validation** — run the full extract → confirm → export flow locally and fix any integration issues
+Stages 1-6 are fully complete. The confirm → export loop is fully wired and validated end-to-end: every confirm/correct/flag action persists to SQLite in real time, `build_declaration_from_storage` reconstructs confirmation status from DB columns, and exported Declarations (JSON/YAML) contain confirmation statuses and provenance trails. The e2e validation test suite (`tests/test_e2e_validation.py`, 11 tests) exercises the complete init → seed → confirm → rebuild → export → snapshot flow.
 
 Next priority:
 - **Integration plugins** — Atlassian extractor (first plugin), then additional extractors as needed (Stage 7)
