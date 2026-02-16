@@ -40,12 +40,15 @@ Every primitive MUST declare its Scope. Provenance is emitted for all significan
 - `src/tml_engine/confirmation/provenance.py` — Helpers for ConfirmationRecord and ProvenanceEntry generation
 - `src/tml_engine/confirmation/screens/` — 9 screens: welcome, archetype, domains, capabilities, skills, policies, edges, flows, summary
 - `src/tml_engine/confirmation/widgets/` — 4 widgets: assertion, response, editor, progress
-- `src/tml_engine/graph/compute.py` — OrganizationalGraph computation (Stage 5 placeholder)
+- `src/tml_engine/pipeline.py` — End-to-end pipeline: extract → structure → persist → build Declaration
+- `src/tml_engine/identity/base.py` — Pluggable IdentityProvider interface
+- `src/tml_engine/identity/local.py` — LocalIdentityProvider (SQLite-backed, default)
+- `src/tml_engine/graph/compute.py` — OrganizationalGraph computation: DecisionFlow tracing, Dependency mapping, AutomationCandidate scoring
 - `src/tml_engine/storage/sqlite.py` — Async SQLite persistence (identities, extractions, primitives, provenance, declarations, interview_sessions)
 - `src/tml_engine/export/json.py` — JSON export of Declarations
 - `src/tml_engine/export/yaml.py` — YAML export of Declarations
 - `templates/web_scrape/default.yaml` — default web scrape configuration
-- `tests/` — pytest test suite (109 tests across 9 files)
+- `tests/` — pytest test suite (142 tests across 12 files)
 
 ## Code Style
 - Type hints on all functions and variables
@@ -86,19 +89,16 @@ All commands use `uv run` — never activate the venv manually or use bare `pyth
 2. ~~Confirmation Surface: Textual TUI with all screens (Welcome, Archetype, Domains, Capabilities, Skills, Policies, Edges, Flows, Summary) + widgets. Use mock data.~~ **DONE**
 3. ~~Core Extractors: web scrape + LLM structurer (produces all nine primitive types)~~ **DONE**
 4. ~~Adaptive Interview: Claude-powered five-phase interview (Scope → Archetype → Domains → Capabilities → Policies/Flows) with gap detection and skill association~~ **DONE**
-5. Identity + Distribution + Organizational Graph: pluggable identity provider, textual-web, Declaration export, OrganizationalGraph computation, AutomationCandidate scoring, PyPI packaging — **NEXT**
-6. Integration Plugins: Atlassian extractor (first plugin), additional extractors and identity providers as needed
+5. ~~Identity + Distribution + Organizational Graph: pluggable identity provider, Declaration export, OrganizationalGraph computation, AutomationCandidate scoring~~ **DONE** (textual-web + PyPI packaging deferred to Stage 6)
+6. Integration Plugins + Distribution: Atlassian extractor (first plugin), textual-web serving, PyPI packaging, additional extractors and identity providers as needed
 
 ## Current State & Known Gaps
-Stages 1-4 are complete. The individual components (extractors, structurer, TUI, storage) all work independently. The main gap before Stage 5 is **pipeline wiring** — connecting these components end-to-end in the CLI:
+Stages 1-5 (functional core) are complete. The pipeline is wired end-to-end: extract → structure → persist → confirm → export. Remaining work:
 
-- **CLI `extract` doesn't persist.** Runs web extractor but doesn't pass results through structurer or store primitives in SQLite.
-- **CLI `interview` doesn't persist.** Runs interview but doesn't store the extraction result or structured primitives.
-- **CLI `confirm` can't load from storage.** Only works with mock data (`--mock`). Needs to build a Declaration from stored primitives for a given identity.
-- **CLI `export` is stubbed.** The export functions (`export/json.py`, `export/yaml.py`) are implemented but the CLI command doesn't call them.
-- **`graph/compute.py` is a placeholder.** OrganizationalGraph computation from Declarations is Stage 5 work.
-
-These gaps are the natural boundary between "components built" (Stages 1-4) and "system integrated" (Stage 5).
+- **textual-web serving** — the `serve` command is stubbed; needs textual-web integration
+- **PyPI packaging** — project is pip-installable but not published
+- **Confirmation persistence** — TUI screens don't write confirmation results back to storage yet
+- **Integration plugins** — Atlassian extractor (Stage 6) not yet built
 
 ## Reference
 - Full spec: `SPEC.md` in project root

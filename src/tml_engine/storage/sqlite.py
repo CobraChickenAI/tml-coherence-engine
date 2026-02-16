@@ -321,6 +321,21 @@ class StorageEngine:
         rows = await cursor.fetchall()
         return [dict(row) for row in rows]
 
+    # ----- Identity Lookups -----
+
+    async def get_identity_by_email(self, email: str) -> dict | None:
+        cursor = await self.db.execute("SELECT * FROM identities WHERE email = ?", (email,))
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+    async def list_primitives_by_identity(self, identity_id: str) -> list[dict]:
+        cursor = await self.db.execute(
+            "SELECT * FROM primitives WHERE identity_id = ? ORDER BY created_at",
+            (identity_id,),
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+
     # ----- Interview Sessions -----
 
     async def create_interview_session(

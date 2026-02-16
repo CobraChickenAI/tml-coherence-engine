@@ -176,3 +176,57 @@ async def test_get_nonexistent_returns_none(storage: StorageEngine) -> None:
     assert await storage.get_primitive("nope") is None
     assert await storage.get_declaration("nope") is None
     assert await storage.get_interview_session("nope") is None
+
+
+@pytest.mark.asyncio
+async def test_get_identity_by_email(storage: StorageEngine) -> None:
+    await storage.upsert_identity(
+        identity_id="id-1",
+        email="alice@example.com",
+        display_name="Alice",
+    )
+    result = await storage.get_identity_by_email("alice@example.com")
+    assert result is not None
+    assert result["id"] == "id-1"
+    assert result["display_name"] == "Alice"
+
+
+@pytest.mark.asyncio
+async def test_get_identity_by_email_not_found(storage: StorageEngine) -> None:
+    result = await storage.get_identity_by_email("nobody@example.com")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_list_primitives_by_identity(storage: StorageEngine) -> None:
+    await storage.store_primitive(
+        primitive_id="s1",
+        primitive_type="scope",
+        scope_id=None,
+        data={},
+        source="test",
+        identity_id="id-1",
+    )
+    await storage.store_primitive(
+        primitive_id="d1",
+        primitive_type="domain",
+        scope_id="s1",
+        data={},
+        source="test",
+        identity_id="id-1",
+    )
+    await storage.store_primitive(
+        primitive_id="d2",
+        primitive_type="domain",
+        scope_id="s1",
+        data={},
+        source="test",
+        identity_id="id-2",
+    )
+
+    result = await storage.list_primitives_by_identity("id-1")
+    assert len(result) == 2
+    ids = {r["id"] for r in result}
+    assert "s1" in ids
+    assert "d1" in ids
+    assert "d2" not in ids

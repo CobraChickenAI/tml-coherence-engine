@@ -86,28 +86,51 @@ def status(
 def extract(
     source: str = typer.Argument(help="Source type: 'web' or 'atlassian'"),
     url: str | None = typer.Option(None, help="URL to scrape (for web extractor)"),
+    identity: str = typer.Option("user@local", help="Email of the person this extraction is for"),
     template: str = typer.Option("default", help="Scrape template name"),
     db: Path = typer.Option(DEFAULT_DB, help="Path to SQLite database"),
 ) -> None:
-    """Extract content from a source."""
+    """Extract content from a source, structure as TML primitives, and persist."""
     if source == "web":
         if not url:
             console.print("[red]--url is required for web extraction[/red]")
             raise typer.Exit(1)
 
-        from tml_engine.extractors.web import WebExtractor
+        from tml_engine.identity.local import LocalIdentityProvider
+        from tml_engine.pipeline import run_web_extraction
+        from tml_engine.storage.sqlite import StorageEngine
+        from tml_engine.structurer.llm import LLMStructurer
+
+        _ensure_db_dir(db)
 
         async def _extract() -> None:
-            extractor = WebExtractor()
-            config: dict = {"base_url": url}
-            if template != "default":
-                config["template_path"] = template
-            console.print(f"[dim]Extracting from {url}...[/dim]")
-            result = await extractor.extract(config)
-            console.print(
-                f"[green]Extracted {len(result.content_blocks)} content blocks "
-                f"from {result.metadata.get('pages_crawled', 0)} pages[/green]"
-            )
+            storage = StorageEngine(db)
+            await storage.initialize()
+            try:
+                provider = LocalIdentityProvider(storage)
+                human = await provider.resolve(identity)
+                structurer = LLMStructurer()
+
+                console.print(f"[dim]Extracting from {url}...[/dim]")
+                scope_id = await run_web_extraction(
+                    url=url,
+                    identity=human,
+                    storage=storage,
+                    structurer=structurer,
+                    template=template,
+                )
+                console.print(f"[green]Extraction complete. Scope: {scope_id}[/green]")
+
+                # Show summary
+                primitives = await storage.list_primitives(scope_id=scope_id)
+                type_counts: dict[str, int] = {}
+                for p in primitives:
+                    ptype = p["type"]
+                    type_counts[ptype] = type_counts.get(ptype, 0) + 1
+                for ptype, count in sorted(type_counts.items()):
+                    console.print(f"  {ptype}: {count}")
+            finally:
+                await storage.close()
 
         asyncio.run(_extract())
     else:
@@ -120,8 +143,14 @@ def interview(
     fill_gaps: bool = typer.Option(False, help="Fill gaps from prior extractions"),
     db: Path = typer.Option(DEFAULT_DB, help="Path to SQLite database"),
 ) -> None:
-    """Run an adaptive interview (requires ANTHROPIC_API_KEY)."""
+    """Run an adaptive interview, structure results, and persist."""
     from tml_engine.extractors.interview import InterviewEngine
+    from tml_engine.identity.local import LocalIdentityProvider
+    from tml_engine.pipeline import run_interview_structuring
+    from tml_engine.storage.sqlite import StorageEngine
+    from tml_engine.structurer.llm import LLMStructurer
+
+    _ensure_db_dir(db)
 
     engine = InterviewEngine()
     state = engine.new_session(identity)
@@ -135,32 +164,84 @@ def interview(
     async def _run_interview() -> None:
         nonlocal state
 
-        while not engine.is_complete(state):
-            console.print("")
-            try:
-                user_input = input("You: ")
-            except (EOFError, KeyboardInterrupt):
-                console.print("\n[dim]Interview paused.[/dim]")
-                return
+        storage = StorageEngine(db)
+        await storage.initialize()
+        try:
+            # Save initial session state
+            provider = LocalIdentityProvider(storage)
+            human = await provider.resolve(identity)
+            identity_row = await storage.get_identity_by_email(identity)
+            identity_id = identity_row["id"] if identity_row else "unknown"
 
-            if user_input.strip().lower() in ("quit", "exit", "q"):
-                console.print("[dim]Interview ended by user.[/dim]")
-                return
+            await storage.create_interview_session(
+                session_id=state.session_id,
+                identity_id=identity_id,
+                phase=state.phase.value,
+            )
 
-            try:
-                response, state = await engine.send_message(state, user_input)
-                console.print(f"\n[green]Interviewer:[/green] {response}")
-            except Exception as e:
-                console.print(f"[red]Error: {e}[/red]")
-                console.print("[dim]Make sure ANTHROPIC_API_KEY is set.[/dim]")
-                return
+            while not engine.is_complete(state):
+                console.print("")
+                try:
+                    user_input = input("You: ")
+                except (EOFError, KeyboardInterrupt):
+                    console.print("\n[dim]Interview paused.[/dim]")
+                    await storage.update_interview_session(
+                        state.session_id,
+                        phase=state.phase.value,
+                        conversation_history=[
+                            m.model_dump(mode="json") if hasattr(m, "model_dump") else m
+                            for m in state.conversation_history
+                        ],
+                        status="paused",
+                    )
+                    return
 
-        console.print("\n[bold green]Interview complete![/bold green]")
-        result = engine.to_extraction_result(state)
-        console.print(
-            f"[dim]Extracted {len(result.content_blocks)} content blocks "
-            f"from {result.metadata.get('total_messages', 0)} messages[/dim]"
-        )
+                if user_input.strip().lower() in ("quit", "exit", "q"):
+                    console.print("[dim]Interview ended by user.[/dim]")
+                    return
+
+                try:
+                    response, state = await engine.send_message(state, user_input)
+                    console.print(f"\n[green]Interviewer:[/green] {response}")
+
+                    # Update session state after each exchange
+                    await storage.update_interview_session(
+                        state.session_id,
+                        phase=state.phase.value,
+                        conversation_history=[
+                            m.model_dump(mode="json") if hasattr(m, "model_dump") else m
+                            for m in state.conversation_history
+                        ],
+                    )
+                except Exception as e:
+                    console.print(f"[red]Error: {e}[/red]")
+                    console.print("[dim]Make sure ANTHROPIC_API_KEY is set.[/dim]")
+                    return
+
+            console.print("\n[bold green]Interview complete![/bold green]")
+            result = engine.to_extraction_result(state)
+            console.print(
+                f"[dim]Extracted {len(result.content_blocks)} content blocks "
+                f"from {result.metadata.get('total_messages', 0)} messages[/dim]"
+            )
+
+            # Structure and persist
+            console.print("[dim]Structuring interview results...[/dim]")
+            structurer = LLMStructurer()
+            scope_id = await run_interview_structuring(
+                result=result,
+                identity=human,
+                storage=storage,
+                structurer=structurer,
+            )
+            console.print(f"[green]Structured and persisted. Scope: {scope_id}[/green]")
+
+            await storage.update_interview_session(
+                state.session_id,
+                status="completed",
+            )
+        finally:
+            await storage.close()
 
     asyncio.run(_run_interview())
 
@@ -178,8 +259,32 @@ def confirm(
         console.print("[dim]Launching with mock data...[/dim]")
         run_confirmation(declaration=None)
     else:
+        from tml_engine.pipeline import build_declaration_from_storage, find_scope_for_identity
+        from tml_engine.storage.sqlite import StorageEngine
+
+        async def _load_declaration():
+            storage = StorageEngine(db)
+            await storage.initialize()
+            try:
+                scope_id = await find_scope_for_identity(storage, identity)
+                if not scope_id:
+                    console.print(
+                        f"[red]No data found for {identity}. Run extract or interview first.[/red]"
+                    )
+                    raise typer.Exit(1)
+
+                declaration = await build_declaration_from_storage(storage, scope_id)
+                if not declaration:
+                    console.print(f"[red]Could not build Declaration for scope {scope_id}[/red]")
+                    raise typer.Exit(1)
+
+                return declaration
+            finally:
+                await storage.close()
+
+        declaration = asyncio.run(_load_declaration())
         console.print(f"[dim]Launching confirmation for {identity}...[/dim]")
-        run_confirmation(declaration=None)  # TODO: load Declaration from storage
+        run_confirmation(declaration=declaration)
 
 
 @app.command()
@@ -188,31 +293,132 @@ def serve(
     db: Path = typer.Option(DEFAULT_DB, help="Path to SQLite database"),
 ) -> None:
     """Serve the confirmation surface via web browser."""
-    console.print("[yellow]Web serving — not yet implemented (Stage 5)[/yellow]")
+    console.print("[yellow]Web serving — not yet implemented (Stage 6)[/yellow]")
 
 
-@app.command()
-def export(
+@app.command(name="export")
+def export_cmd(
     identity: str = typer.Option(..., help="Email of the person to export"),
-    format: str = typer.Option("json", help="Export format: json or yaml"),
+    fmt: str = typer.Option("json", "--format", help="Export format: json or yaml"),
     output: Path = typer.Option(..., help="Output file path"),
     db: Path = typer.Option(DEFAULT_DB, help="Path to SQLite database"),
 ) -> None:
     """Export a confirmed Declaration."""
-    console.print("[yellow]Export — not yet implemented (Stage 5)[/yellow]")
+    from tml_engine.pipeline import build_declaration_from_storage, find_scope_for_identity
+    from tml_engine.storage.sqlite import StorageEngine
+
+    async def _export() -> None:
+        storage = StorageEngine(db)
+        await storage.initialize()
+        try:
+            scope_id = await find_scope_for_identity(storage, identity)
+            if not scope_id:
+                console.print(f"[red]No data found for {identity}[/red]")
+                raise typer.Exit(1)
+
+            declaration = await build_declaration_from_storage(storage, scope_id)
+            if not declaration:
+                console.print(f"[red]Could not build Declaration for scope {scope_id}[/red]")
+                raise typer.Exit(1)
+
+            if fmt == "yaml":
+                from tml_engine.export.yaml import export_declaration_yaml
+
+                export_declaration_yaml(declaration, output)
+            else:
+                from tml_engine.export.json import export_declaration_json
+
+                export_declaration_json(declaration, output)
+
+            console.print(f"[green]Exported Declaration to {output}[/green]")
+        finally:
+            await storage.close()
+
+    asyncio.run(_export())
 
 
 @app.command()
 def graph(
     scope: str = typer.Option(..., help="Scope ID for the organizational graph"),
-    format: str = typer.Option("json", help="Export format: json"),
+    fmt: str = typer.Option("json", "--format", help="Export format: json"),
     output: Path | None = typer.Option(None, help="Output file path"),
     show_flows: bool = typer.Option(False, help="Print decision flows"),
     show_automation: bool = typer.Option(False, help="Print automation candidates"),
     db: Path = typer.Option(DEFAULT_DB, help="Path to SQLite database"),
 ) -> None:
-    """Export or display the organizational graph."""
-    console.print("[yellow]Organizational graph — not yet implemented (Stage 5)[/yellow]")
+    """Compute and display the organizational graph."""
+    from tml_engine.graph.compute import compute_organizational_graph
+    from tml_engine.pipeline import build_declaration_from_storage
+    from tml_engine.storage.sqlite import StorageEngine
+
+    async def _graph() -> None:
+        import json
+
+        from tml_engine.models.declaration import Declaration
+
+        storage = StorageEngine(db)
+        await storage.initialize()
+        try:
+            # Load all declarations for this scope
+            decl_rows = await storage.list_declarations(scope_id=scope)
+
+            declarations = []
+            if decl_rows:
+                for row in decl_rows:
+                    data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
+                    declarations.append(Declaration.model_validate(data))
+            else:
+                # Try building from primitives directly
+                declaration = await build_declaration_from_storage(storage, scope)
+                if declaration:
+                    declarations.append(declaration)
+
+            if not declarations:
+                console.print(f"[red]No declarations found for scope {scope}[/red]")
+                raise typer.Exit(1)
+
+            org_graph = compute_organizational_graph(declarations)
+
+            if output:
+                output.write_text(org_graph.model_dump_json(indent=2))
+                console.print(f"[green]Organizational graph exported to {output}[/green]")
+
+            if show_flows:
+                console.print("\n[bold]Decision Flows[/bold]")
+                if not org_graph.decision_flows:
+                    console.print("  [dim]No decision flows found[/dim]")
+                for flow in org_graph.decision_flows:
+                    console.print(f"  {flow.description}")
+
+            if show_automation:
+                console.print("\n[bold]Automation Candidates[/bold]")
+                if not org_graph.automation_candidates:
+                    console.print("  [dim]No automation candidates found[/dim]")
+                for candidate in org_graph.automation_candidates:
+                    color = (
+                        "green"
+                        if candidate.automation_readiness > 0.7
+                        else ("yellow" if candidate.automation_readiness > 0.4 else "red")
+                    )
+                    console.print(
+                        f"  [{color}]{candidate.automation_readiness:.0%}[/{color}] "
+                        f"{candidate.capability_id} → {candidate.recommended_skill_type}"
+                    )
+                    if candidate.missing_elements:
+                        for missing in candidate.missing_elements:
+                            console.print(f"    [dim]missing: {missing}[/dim]")
+
+            if not output and not show_flows and not show_automation:
+                console.print(
+                    f"[green]Graph computed: "
+                    f"{len(org_graph.decision_flows)} flows, "
+                    f"{len(org_graph.dependency_map)} dependencies, "
+                    f"{len(org_graph.automation_candidates)} automation candidates[/green]"
+                )
+        finally:
+            await storage.close()
+
+    asyncio.run(_graph())
 
 
 if __name__ == "__main__":
