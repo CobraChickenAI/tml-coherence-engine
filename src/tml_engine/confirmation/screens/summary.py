@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Label, Static
 
@@ -23,7 +23,6 @@ class SummaryScreen(Screen):
         width: 1fr;
         height: 1fr;
         padding: 2 4;
-        overflow-y: auto;
     }
 
     SummaryScreen .summary-title {
@@ -80,7 +79,7 @@ class SummaryScreen(Screen):
         yield Header()
         d = self.declaration
         with Horizontal():
-            with Vertical(classes="main-content"):
+            with VerticalScroll(classes="main-content"):
                 yield Static("Declaration Summary", classes="summary-title")
 
                 completion = d.compute_completion()

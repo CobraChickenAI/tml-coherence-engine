@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Static
 
@@ -93,7 +93,6 @@ class CapabilitiesScreen(Screen):
         width: 1fr;
         height: 1fr;
         padding: 1 2;
-        overflow-y: auto;
     }
 
     CapabilitiesScreen .screen-title {
@@ -130,7 +129,7 @@ class CapabilitiesScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Header()
         with Horizontal():
-            with Vertical(classes="main-content"):
+            with VerticalScroll(classes="main-content"):
                 yield Static("Your Expertise — Decision Logic", classes="screen-title")
                 yield Static("", id="group-header", classes="group-header")
                 yield Static("", id="counter", classes="assertion-counter")

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Static
 
@@ -77,7 +77,6 @@ class ArchetypeScreen(Screen):
         width: 1fr;
         height: 1fr;
         padding: 1 2;
-        overflow-y: auto;
     }
 
     ArchetypeScreen .screen-title {
@@ -116,7 +115,7 @@ class ArchetypeScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Header()
         with Horizontal():
-            with Vertical(classes="main-content"):
+            with VerticalScroll(classes="main-content"):
                 yield Static("Your Role", classes="screen-title")
                 yield Static("", id="group-header", classes="group-header")
                 yield Static("", id="counter", classes="assertion-counter")

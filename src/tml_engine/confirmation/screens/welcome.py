@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Label, Static
 
@@ -23,7 +23,6 @@ class WelcomeScreen(Screen):
         width: 1fr;
         height: 1fr;
         padding: 2 4;
-        overflow-y: auto;
     }
 
     WelcomeScreen .welcome-title {
@@ -88,7 +87,7 @@ class WelcomeScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Header()
         with Horizontal():
-            with Vertical(classes="main-content"):
+            with VerticalScroll(classes="main-content"):
                 yield Static(
                     "TML Coherence Engine — Confirmation Surface",
                     classes="welcome-title",
