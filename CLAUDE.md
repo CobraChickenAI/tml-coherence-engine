@@ -35,7 +35,7 @@ Every primitive MUST declare its Scope. Provenance is emitted for all significan
 - `src/tml_engine/extractors/interview.py` — InterviewEngine (five-phase Claude-powered) + InterviewExtractor adapter
 - `src/tml_engine/extractors/plugins/` — integration extractors (atlassian, etc.) — not yet implemented
 - `src/tml_engine/structurer/llm.py` — LLMStructurer: raw content → TML primitives via Claude, with confidence tracking
-- `src/tml_engine/confirmation/app.py` — CoherenceApp (Textual App) orchestrating 9-screen wizard flow
+- `src/tml_engine/confirmation/app.py` — CoherenceApp (Textual App) orchestrating 9-screen wizard flow, with optional StorageEngine for persistence
 - `src/tml_engine/confirmation/mock_data.py` — Mock Declaration for development/testing (logistics ops manager)
 - `src/tml_engine/confirmation/provenance.py` — Helpers for ConfirmationRecord and ProvenanceEntry generation
 - `src/tml_engine/confirmation/screens/` — 9 screens: welcome, archetype, domains, capabilities, skills, policies, edges, flows, summary
@@ -48,7 +48,7 @@ Every primitive MUST declare its Scope. Provenance is emitted for all significan
 - `src/tml_engine/export/json.py` — JSON export of Declarations
 - `src/tml_engine/export/yaml.py` — YAML export of Declarations
 - `templates/web_scrape/default.yaml` — default web scrape configuration
-- `tests/` — pytest test suite (142 tests across 12 files)
+- `tests/` — pytest test suite (153 tests across 13 files)
 
 ## Code Style
 - Type hints on all functions and variables
@@ -90,17 +90,17 @@ All commands use `uv run` — never activate the venv manually or use bare `pyth
 3. ~~Core Extractors: web scrape + LLM structurer (produces all nine primitive types)~~ **DONE**
 4. ~~Adaptive Interview: Claude-powered five-phase interview (Scope → Archetype → Domains → Capabilities → Policies/Flows) with gap detection and skill association~~ **DONE**
 5. ~~Identity + Distribution + Organizational Graph: pluggable identity provider, Declaration export, OrganizationalGraph computation, AutomationCandidate scoring~~ **DONE**
-6. Local hardening: confirmation persistence (TUI writes back to storage), end-to-end local workflow validation
+6. ~~Local hardening: confirmation persistence (TUI writes back to storage), end-to-end local workflow validation~~ **DONE** (persistence complete; end-to-end validation remaining)
 7. Integration plugins: Atlassian extractor (first plugin), additional extractors and identity providers as needed
 8. Distribution: textual-web serving, PyPI packaging — deferred until local tool is solid
 
 ## Current State & Known Gaps
-Stages 1-5 (functional core) are complete. The pipeline is wired end-to-end: extract → structure → persist → confirm → export. Next priority is local hardening (Stage 6):
+Stages 1-6 are complete. The confirm → export loop is now fully wired: every confirm/correct/flag action persists to SQLite in real time, and `build_declaration_from_storage` reconstructs confirmation status from DB columns.
 
-- **Confirmation persistence** — TUI screens don't write confirmation results back to storage yet (breaks the confirm → export loop)
-- **End-to-end local validation** — run the full flow locally and fix any issues
+Remaining local hardening:
+- **End-to-end local validation** — run the full extract → confirm → export flow locally and fix any integration issues
 
-After local hardening:
+Next priority:
 - **Integration plugins** — Atlassian extractor (first plugin), then additional extractors as needed (Stage 7)
 
 Deferred until local tool is solid:
