@@ -15,6 +15,7 @@ Truth     Capability     Policy         Provenance
 Every primitive MUST declare its Scope. Provenance is emitted for all significant actions. The Declaration is the root of trust. This set is closed — no additional primitives.
 
 ## Stack
+- **uv** for all Python toolchain operations (venv, dependency management, script execution)
 - Python 3.11+, Textual (latest), Pydantic v2, httpx, beautifulsoup4
 - Anthropic Python SDK for LLM structuring and adaptive interviews
 - SQLite (aiosqlite) for local storage (with dedicated Provenance table)
@@ -56,11 +57,14 @@ Every primitive MUST declare its Scope. Provenance is emitted for all significan
 - Use `pathlib.Path` not string paths
 
 ## How to Verify
-- `pytest` — runs the full test suite (109 tests)
-- `ruff check src/ tests/` — lint check
-- `ruff format --check src/ tests/` — format check
-- `python -m tml_engine.cli` — runs the CLI
-- `textual run src/tml_engine/confirmation/app.py` — TUI dev iteration
+All commands use `uv run` — never activate the venv manually or use bare `python`/`pytest`.
+- `uv run pytest` — runs the full test suite
+- `uv run ruff check src/ tests/` — lint check
+- `uv run ruff format --check src/ tests/` — format check
+- `uv run python -m tml_engine.cli` — runs the CLI
+- `uv run textual run src/tml_engine/confirmation/app.py` — TUI dev iteration
+- `uv sync` — install/sync all dependencies (including dev)
+- `uv add <package>` — add a new dependency
 
 ## Key Architectural Rules
 - Every data structure is an instance of one of the nine TML primitives (or a sub-component of one)
