@@ -20,7 +20,8 @@ def _flow_assertions(connectors: list[Connector], bindings: list[Binding]) -> li
     """Generate human-readable assertions from Connector and Binding primitives."""
     assertions: list[dict] = []
 
-    for conn in connectors:
+    conn_count = len(connectors)
+    for i, conn in enumerate(connectors):
         assertions.append(
             {
                 "text": (
@@ -33,10 +34,13 @@ def _flow_assertions(connectors: list[Connector], bindings: list[Binding]) -> li
                 "primitive_type": "connector",
                 "scope_id": conn.scope_id,
                 "field": "connector",
+                "group": "Input Flows",
+                "group_label": f"{i + 1} of {conn_count}",
             }
         )
 
-    for bind in bindings:
+    bind_count = len(bindings)
+    for i, bind in enumerate(bindings):
         assertions.append(
             {
                 "text": (
@@ -49,6 +53,8 @@ def _flow_assertions(connectors: list[Connector], bindings: list[Binding]) -> li
                 "primitive_type": "binding",
                 "scope_id": bind.scope_id,
                 "field": "binding",
+                "group": "Output Flows",
+                "group_label": f"{i + 1} of {bind_count}",
             }
         )
 
@@ -66,6 +72,7 @@ class FlowsScreen(Screen):
     FlowsScreen .main-content {
         width: 1fr;
         padding: 1 2;
+        overflow-y: auto;
     }
 
     FlowsScreen .screen-title {
@@ -73,6 +80,13 @@ class FlowsScreen(Screen):
         text-align: center;
         padding: 1 0;
         color: $primary;
+    }
+
+    FlowsScreen .group-header {
+        text-style: italic;
+        color: $secondary;
+        text-align: center;
+        padding: 0 0 1 0;
     }
 
     FlowsScreen .assertion-counter {
@@ -103,6 +117,7 @@ class FlowsScreen(Screen):
         with Horizontal():
             with Vertical(classes="main-content"):
                 yield Static("Information Flows", classes="screen-title")
+                yield Static("", id="group-header", classes="group-header")
                 yield Static("", id="counter", classes="assertion-counter")
                 yield AssertionWidget(assertion_text="", id="assertion")
                 yield ResponseWidget(id="response")
@@ -111,6 +126,10 @@ class FlowsScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
+        self.app.update_section_progress("flows", 0, len(self._assertions))  # type: ignore[attr-defined]
+        spine = self.query_one("#progress-spine", ProgressSpineWidget)
+        spine.set_active("flows")
+        spine.set_counts(self.app.progress_state)  # type: ignore[attr-defined]
         if not self._assertions:
             self.query_one("#counter", Static).update("No flows to confirm")
             self.call_later(self._skip)
@@ -125,6 +144,9 @@ class FlowsScreen(Screen):
             self.app.switch_screen("summary")
             return
         assertion = self._assertions[self._current_index]
+        group = assertion.get("group", "")
+        group_label = assertion.get("group_label", "")
+        self.query_one("#group-header", Static).update(f"{group} — {group_label}" if group else "")
         self.query_one("#assertion", AssertionWidget).update_assertion(
             text=assertion["text"],
         )
@@ -134,6 +156,11 @@ class FlowsScreen(Screen):
         self.query_one("#response", ResponseWidget).focus()
 
     def _advance(self) -> None:
+        confirmed = sum(1 for v in self._responses.values() if v in ("confirmed", "corrected"))
+        self.app.update_section_progress("flows", confirmed, len(self._assertions))  # type: ignore[attr-defined]
+        self.query_one("#progress-spine", ProgressSpineWidget).set_counts(
+            self.app.progress_state  # type: ignore[attr-defined]
+        )
         self._current_index += 1
         self._show_current()
 

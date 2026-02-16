@@ -20,7 +20,8 @@ def _skill_assertions(capabilities: list[Capability]) -> list[dict]:
     """Generate human-readable assertions from skill references within Capabilities."""
     assertions: list[dict] = []
     for cap in capabilities:
-        for skill in cap.skills:
+        skill_count = len(cap.skills)
+        for i, skill in enumerate(cap.skills):
             surface = f" (runs on: {skill.execution_surface})" if skill.execution_surface else ""
             assertions.append(
                 {
@@ -32,6 +33,8 @@ def _skill_assertions(capabilities: list[Capability]) -> list[dict]:
                     "capability_id": cap.id,
                     "skill_id": skill.id,
                     "field": "skill",
+                    "group": cap.name,
+                    "group_label": f"Skills ({i + 1} of {skill_count})",
                 }
             )
     return assertions
@@ -48,6 +51,7 @@ class SkillsScreen(Screen):
     SkillsScreen .main-content {
         width: 1fr;
         padding: 1 2;
+        overflow-y: auto;
     }
 
     SkillsScreen .screen-title {
@@ -55,6 +59,13 @@ class SkillsScreen(Screen):
         text-align: center;
         padding: 1 0;
         color: $primary;
+    }
+
+    SkillsScreen .group-header {
+        text-style: italic;
+        color: $secondary;
+        text-align: center;
+        padding: 0 0 1 0;
     }
 
     SkillsScreen .assertion-counter {
@@ -79,6 +90,7 @@ class SkillsScreen(Screen):
         with Horizontal():
             with Vertical(classes="main-content"):
                 yield Static("Your Tools & Processes", classes="screen-title")
+                yield Static("", id="group-header", classes="group-header")
                 yield Static("", id="counter", classes="assertion-counter")
                 yield AssertionWidget(assertion_text="", id="assertion")
                 yield ResponseWidget(id="response")
@@ -87,6 +99,10 @@ class SkillsScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
+        self.app.update_section_progress("skills", 0, len(self._assertions))  # type: ignore[attr-defined]
+        spine = self.query_one("#progress-spine", ProgressSpineWidget)
+        spine.set_active("skills")
+        spine.set_counts(self.app.progress_state)  # type: ignore[attr-defined]
         self._show_current()
 
     def _show_current(self) -> None:
@@ -94,6 +110,9 @@ class SkillsScreen(Screen):
             self.app.switch_screen("policies")
             return
         assertion = self._assertions[self._current_index]
+        group = assertion.get("group", "")
+        group_label = assertion.get("group_label", "")
+        self.query_one("#group-header", Static).update(f"{group} — {group_label}" if group else "")
         self.query_one("#assertion", AssertionWidget).update_assertion(
             text=assertion["text"],
         )
@@ -103,6 +122,11 @@ class SkillsScreen(Screen):
         self.query_one("#response", ResponseWidget).focus()
 
     def _advance(self) -> None:
+        confirmed = sum(1 for v in self._responses.values() if v in ("confirmed", "corrected"))
+        self.app.update_section_progress("skills", confirmed, len(self._assertions))  # type: ignore[attr-defined]
+        self.query_one("#progress-spine", ProgressSpineWidget).set_counts(
+            self.app.progress_state  # type: ignore[attr-defined]
+        )
         self._current_index += 1
         self._show_current()
 

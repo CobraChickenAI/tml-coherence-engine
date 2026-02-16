@@ -20,7 +20,8 @@ def _exception_assertions(capabilities: list[Capability]) -> list[dict]:
     """Generate human-readable assertions from ExceptionRules within Capabilities."""
     assertions: list[dict] = []
     for cap in capabilities:
-        for exc in cap.exceptions:
+        exc_count = len(cap.exceptions)
+        for i, exc in enumerate(cap.exceptions):
             assertions.append(
                 {
                     "text": (
@@ -30,6 +31,8 @@ def _exception_assertions(capabilities: list[Capability]) -> list[dict]:
                     ),
                     "capability_id": cap.id,
                     "field": "exception",
+                    "group": cap.name,
+                    "group_label": f"Exceptions ({i + 1} of {exc_count})",
                 }
             )
     return assertions
@@ -46,6 +49,7 @@ class EdgesScreen(Screen):
     EdgesScreen .main-content {
         width: 1fr;
         padding: 1 2;
+        overflow-y: auto;
     }
 
     EdgesScreen .screen-title {
@@ -53,6 +57,13 @@ class EdgesScreen(Screen):
         text-align: center;
         padding: 1 0;
         color: $primary;
+    }
+
+    EdgesScreen .group-header {
+        text-style: italic;
+        color: $secondary;
+        text-align: center;
+        padding: 0 0 1 0;
     }
 
     EdgesScreen .assertion-counter {
@@ -83,6 +94,7 @@ class EdgesScreen(Screen):
         with Horizontal():
             with Vertical(classes="main-content"):
                 yield Static("Exceptions & Overrides", classes="screen-title")
+                yield Static("", id="group-header", classes="group-header")
                 yield Static("", id="counter", classes="assertion-counter")
                 yield AssertionWidget(assertion_text="", id="assertion")
                 yield ResponseWidget(id="response")
@@ -91,6 +103,10 @@ class EdgesScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
+        self.app.update_section_progress("edges", 0, len(self._assertions))  # type: ignore[attr-defined]
+        spine = self.query_one("#progress-spine", ProgressSpineWidget)
+        spine.set_active("edges")
+        spine.set_counts(self.app.progress_state)  # type: ignore[attr-defined]
         if not self._assertions:
             self.query_one("#counter", Static).update("No exceptions to confirm")
             self.call_later(self._skip)
@@ -106,6 +122,9 @@ class EdgesScreen(Screen):
             self.app.switch_screen("flows")
             return
         assertion = self._assertions[self._current_index]
+        group = assertion.get("group", "")
+        group_label = assertion.get("group_label", "")
+        self.query_one("#group-header", Static).update(f"{group} — {group_label}" if group else "")
         self.query_one("#assertion", AssertionWidget).update_assertion(
             text=assertion["text"],
         )
@@ -115,6 +134,11 @@ class EdgesScreen(Screen):
         self.query_one("#response", ResponseWidget).focus()
 
     def _advance(self) -> None:
+        confirmed = sum(1 for v in self._responses.values() if v in ("confirmed", "corrected"))
+        self.app.update_section_progress("edges", confirmed, len(self._assertions))  # type: ignore[attr-defined]
+        self.query_one("#progress-spine", ProgressSpineWidget).set_counts(
+            self.app.progress_state  # type: ignore[attr-defined]
+        )
         self._current_index += 1
         self._show_current()
 

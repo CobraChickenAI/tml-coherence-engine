@@ -19,7 +19,9 @@ from tml_engine.models.primitives import Policy
 def _policy_assertions(policies: list[Policy]) -> list[dict]:
     """Generate human-readable assertions from Policy primitives."""
     assertions: list[dict] = []
-    for policy in policies:
+    total = len(policies)
+    for i, policy in enumerate(policies):
+        level = "Hard" if policy.enforcement_level == "hard" else "Soft"
         enforcement = (
             "This rule can never be broken."
             if policy.enforcement_level == "hard"
@@ -30,6 +32,8 @@ def _policy_assertions(policies: list[Policy]) -> list[dict]:
                 "text": (f"{policy.name}: {policy.rule} {enforcement}"),
                 "policy_id": policy.id,
                 "field": "policy",
+                "group": policy.name,
+                "group_label": f"{level} Rule ({i + 1} of {total})",
             }
         )
     return assertions
@@ -46,6 +50,7 @@ class PoliciesScreen(Screen):
     PoliciesScreen .main-content {
         width: 1fr;
         padding: 1 2;
+        overflow-y: auto;
     }
 
     PoliciesScreen .screen-title {
@@ -53,6 +58,13 @@ class PoliciesScreen(Screen):
         text-align: center;
         padding: 1 0;
         color: $primary;
+    }
+
+    PoliciesScreen .group-header {
+        text-style: italic;
+        color: $secondary;
+        text-align: center;
+        padding: 0 0 1 0;
     }
 
     PoliciesScreen .assertion-counter {
@@ -77,6 +89,7 @@ class PoliciesScreen(Screen):
         with Horizontal():
             with Vertical(classes="main-content"):
                 yield Static("Rules & Constraints", classes="screen-title")
+                yield Static("", id="group-header", classes="group-header")
                 yield Static("", id="counter", classes="assertion-counter")
                 yield AssertionWidget(assertion_text="", id="assertion")
                 yield ResponseWidget(id="response")
@@ -85,6 +98,10 @@ class PoliciesScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
+        self.app.update_section_progress("policies", 0, len(self._assertions))  # type: ignore[attr-defined]
+        spine = self.query_one("#progress-spine", ProgressSpineWidget)
+        spine.set_active("policies")
+        spine.set_counts(self.app.progress_state)  # type: ignore[attr-defined]
         self._show_current()
 
     def _show_current(self) -> None:
@@ -92,6 +109,9 @@ class PoliciesScreen(Screen):
             self.app.switch_screen("edges")
             return
         assertion = self._assertions[self._current_index]
+        group = assertion.get("group", "")
+        group_label = assertion.get("group_label", "")
+        self.query_one("#group-header", Static).update(f"{group} — {group_label}" if group else "")
         self.query_one("#assertion", AssertionWidget).update_assertion(
             text=assertion["text"],
         )
@@ -101,6 +121,11 @@ class PoliciesScreen(Screen):
         self.query_one("#response", ResponseWidget).focus()
 
     def _advance(self) -> None:
+        confirmed = sum(1 for v in self._responses.values() if v in ("confirmed", "corrected"))
+        self.app.update_section_progress("policies", confirmed, len(self._assertions))  # type: ignore[attr-defined]
+        self.query_one("#progress-spine", ProgressSpineWidget).set_counts(
+            self.app.progress_state  # type: ignore[attr-defined]
+        )
         self._current_index += 1
         self._show_current()
 

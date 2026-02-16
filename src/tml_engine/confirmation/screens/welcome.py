@@ -22,6 +22,7 @@ class WelcomeScreen(Screen):
     WelcomeScreen .main-content {
         width: 1fr;
         padding: 2 4;
+        overflow-y: auto;
     }
 
     WelcomeScreen .welcome-title {
@@ -54,6 +55,14 @@ class WelcomeScreen(Screen):
 
     WelcomeScreen .detail-line {
         padding: 0 1;
+    }
+
+    WelcomeScreen .onboarding-panel {
+        padding: 1 2;
+        margin: 1 0;
+        border: round $warning;
+        background: $surface;
+        height: auto;
     }
 
     WelcomeScreen .begin-button {
@@ -114,6 +123,43 @@ class WelcomeScreen(Screen):
                         classes="detail-line",
                     )
 
+                total = self._compute_total_assertions(d)
+                est_minutes = max(1, total // 4)
+
+                with Vertical(classes="onboarding-panel"):
+                    yield Label("How This Works", classes="panel-heading")
+                    yield Label(
+                        "  We extracted a model of your expertise from available sources.",
+                        classes="detail-line",
+                    )
+                    yield Label(
+                        "  You'll review each assertion one at a time.",
+                        classes="detail-line",
+                    )
+                    yield Label("", classes="detail-line")
+                    yield Label("  Your three options for each assertion:", classes="detail-line")
+                    yield Label(
+                        "    Confirm [Enter] — This is accurate as written",
+                        classes="detail-line",
+                    )
+                    yield Label(
+                        "    Edit [E] — Rewrite in your own words, then save",
+                        classes="detail-line",
+                    )
+                    yield Label(
+                        "    Flag [F] — Skip for now and come back to it later",
+                        classes="detail-line",
+                    )
+                    yield Label("", classes="detail-line")
+                    yield Label(
+                        f"  {total} assertions to review (~{est_minutes} min estimated)",
+                        classes="detail-line",
+                    )
+                    yield Label(
+                        "  Your progress saves automatically as you go.",
+                        classes="detail-line",
+                    )
+
                 with Horizontal(classes="begin-button"):
                     yield Button(
                         "Begin Confirmation [Enter]",
@@ -124,9 +170,38 @@ class WelcomeScreen(Screen):
             yield ProgressSpineWidget(id="progress-spine")
         yield Footer()
 
+    @staticmethod
+    def _compute_total_assertions(d: Declaration) -> int:
+        """Count total assertions across all screens."""
+        from tml_engine.confirmation.screens.archetype import _archetype_assertions
+        from tml_engine.confirmation.screens.capabilities import _capability_assertions
+        from tml_engine.confirmation.screens.domains import _domain_assertions
+        from tml_engine.confirmation.screens.edges import _exception_assertions
+        from tml_engine.confirmation.screens.flows import _flow_assertions
+        from tml_engine.confirmation.screens.policies import _policy_assertions
+        from tml_engine.confirmation.screens.skills import _skill_assertions
+
+        total = 0
+        for arch in d.archetypes:
+            total += len(_archetype_assertions(arch))
+        total += len(_domain_assertions(d.domains))
+        total += len(_capability_assertions(d.capabilities))
+        total += len(_skill_assertions(d.capabilities))
+        total += len(_policy_assertions(d.policies))
+        total += len(_exception_assertions(d.capabilities))
+        total += len(_flow_assertions(d.connectors, d.bindings))
+        return total
+
+    def on_mount(self) -> None:
+        self.app.update_section_progress("scope", 0, 1)  # type: ignore[attr-defined]
+        spine = self.query_one("#progress-spine", ProgressSpineWidget)
+        spine.set_active("scope")
+        spine.set_counts(self.app.progress_state)  # type: ignore[attr-defined]
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-begin":
             self.action_begin()
 
     def action_begin(self) -> None:
+        self.app.update_section_progress("scope", 1, 1)  # type: ignore[attr-defined]
         self.app.switch_screen("archetype")

@@ -24,30 +24,41 @@ def _archetype_assertions(arch: Archetype) -> list[dict]:
         {
             "text": (f"Your role is {arch.role_name}. {arch.role_description}"),
             "field": "role",
+            "group": arch.role_name,
+            "group_label": "Role Description",
         }
     )
 
+    resp_count = len(arch.primary_responsibilities)
     for i, resp in enumerate(arch.primary_responsibilities):
         assertions.append(
             {
                 "text": f"One of your primary responsibilities is: {resp}",
                 "field": f"responsibility_{i}",
+                "group": arch.role_name,
+                "group_label": f"Responsibilities ({i + 1} of {resp_count})",
             }
         )
 
+    auth_count = len(arch.decision_authority)
     for i, auth in enumerate(arch.decision_authority):
         assertions.append(
             {
                 "text": f"You have authority to: {auth}",
                 "field": f"authority_{i}",
+                "group": arch.role_name,
+                "group_label": f"Authority ({i + 1} of {auth_count})",
             }
         )
 
+    boundary_count = len(arch.accountability_boundaries)
     for i, boundary in enumerate(arch.accountability_boundaries):
         assertions.append(
             {
                 "text": f"Outside your scope: {boundary}",
                 "field": f"boundary_{i}",
+                "group": arch.role_name,
+                "group_label": f"Boundaries ({i + 1} of {boundary_count})",
             }
         )
 
@@ -65,6 +76,7 @@ class ArchetypeScreen(Screen):
     ArchetypeScreen .main-content {
         width: 1fr;
         padding: 1 2;
+        overflow-y: auto;
     }
 
     ArchetypeScreen .screen-title {
@@ -72,6 +84,13 @@ class ArchetypeScreen(Screen):
         text-align: center;
         padding: 1 0;
         color: $primary;
+    }
+
+    ArchetypeScreen .group-header {
+        text-style: italic;
+        color: $secondary;
+        text-align: center;
+        padding: 0 0 1 0;
     }
 
     ArchetypeScreen .assertion-counter {
@@ -98,6 +117,7 @@ class ArchetypeScreen(Screen):
         with Horizontal():
             with Vertical(classes="main-content"):
                 yield Static("Your Role", classes="screen-title")
+                yield Static("", id="group-header", classes="group-header")
                 yield Static("", id="counter", classes="assertion-counter")
                 yield AssertionWidget(
                     assertion_text="",
@@ -110,6 +130,10 @@ class ArchetypeScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
+        self.app.update_section_progress("archetype", 0, len(self._assertions))  # type: ignore[attr-defined]
+        spine = self.query_one("#progress-spine", ProgressSpineWidget)
+        spine.set_active("archetype")
+        spine.set_counts(self.app.progress_state)  # type: ignore[attr-defined]
         self._show_current()
 
     def _show_current(self) -> None:
@@ -117,6 +141,9 @@ class ArchetypeScreen(Screen):
             self.app.switch_screen("domains")
             return
         assertion = self._assertions[self._current_index]
+        group = assertion.get("group", "")
+        group_label = assertion.get("group_label", "")
+        self.query_one("#group-header", Static).update(f"{group} — {group_label}" if group else "")
         self.query_one("#assertion", AssertionWidget).update_assertion(
             text=assertion["text"],
             source=f"Extracted from: {self.archetype.source.source_type}",
@@ -127,6 +154,11 @@ class ArchetypeScreen(Screen):
         self.query_one("#response", ResponseWidget).focus()
 
     def _advance(self) -> None:
+        confirmed = sum(1 for v in self._responses.values() if v in ("confirmed", "corrected"))
+        self.app.update_section_progress("archetype", confirmed, len(self._assertions))  # type: ignore[attr-defined]
+        self.query_one("#progress-spine", ProgressSpineWidget).set_counts(
+            self.app.progress_state  # type: ignore[attr-defined]
+        )
         self._current_index += 1
         self._show_current()
 

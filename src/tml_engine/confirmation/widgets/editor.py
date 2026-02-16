@@ -85,7 +85,13 @@ class InlineEditorWidget(Widget):
         textarea = self.query_one("#correction-input", TextArea)
         textarea.load_text(text)
         self.add_class("visible")
+        self.call_after_refresh(self._focus_and_scroll)
+
+    def _focus_and_scroll(self) -> None:
+        """Focus the textarea and scroll editor into view after layout reflow."""
+        textarea = self.query_one("#correction-input", TextArea)
         textarea.focus()
+        self.scroll_visible()
 
     def hide(self) -> None:
         """Hide the editor."""

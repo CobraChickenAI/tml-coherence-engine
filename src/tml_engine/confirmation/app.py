@@ -55,6 +55,11 @@ class CoherenceApp(App):
         self.declaration = declaration
         self.storage = storage
         self.identity_id = identity_id
+        self.progress_state: dict[str, tuple[int, int]] = {}
+
+    def update_section_progress(self, section: str, confirmed: int, total: int) -> None:
+        """Update progress tracking for a section. Called by screens on each action."""
+        self.progress_state[section] = (confirmed, total)
 
     def on_mount(self) -> None:
         """Install all screens from the Declaration and show the welcome screen."""

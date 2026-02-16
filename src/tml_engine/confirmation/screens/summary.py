@@ -47,6 +47,7 @@ class SummaryScreen(Screen):
 
     SummaryScreen .detail-line {
         padding: 0 1;
+        width: 1fr;
     }
 
     SummaryScreen .completion-bar {
@@ -151,21 +152,38 @@ class SummaryScreen(Screen):
             yield ProgressSpineWidget(id="progress-spine")
         yield Footer()
 
+    def on_mount(self) -> None:
+        spine = self.query_one("#progress-spine", ProgressSpineWidget)
+        spine.set_active("")  # No active section — we're done
+        spine.set_counts(self.app.progress_state)  # type: ignore[attr-defined]
+
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         from pathlib import Path
 
         if event.button.id == "btn-json":
             from tml_engine.export.json import export_declaration_json
 
-            out = Path("declaration.json")
+            out = Path("declaration.json").resolve()
             export_declaration_json(self.declaration, out)
-            self.notify(f"Exported to {out}", title="JSON Export")
+            size_kb = out.stat().st_size / 1024
+            completion = self.declaration.compute_completion()
+            self.notify(
+                f"Saved to {out}\nSize: {size_kb:.1f} KB | Completion: {completion:.0f}%",
+                title="JSON Export Complete",
+                timeout=8,
+            )
         elif event.button.id == "btn-yaml":
             from tml_engine.export.yaml import export_declaration_yaml
 
-            out = Path("declaration.yaml")
+            out = Path("declaration.yaml").resolve()
             export_declaration_yaml(self.declaration, out)
-            self.notify(f"Exported to {out}", title="YAML Export")
+            size_kb = out.stat().st_size / 1024
+            completion = self.declaration.compute_completion()
+            self.notify(
+                f"Saved to {out}\nSize: {size_kb:.1f} KB | Completion: {completion:.0f}%",
+                title="YAML Export Complete",
+                timeout=8,
+            )
         elif event.button.id == "btn-done":
             await self.app.persist_declaration_snapshot()  # type: ignore[attr-defined]
             self.app.exit()

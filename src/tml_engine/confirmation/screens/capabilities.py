@@ -30,11 +30,14 @@ def _capability_assertions(capabilities: list[Capability]) -> list[dict]:
                 ),
                 "capability_id": cap.id,
                 "field": "description",
+                "group": cap.name,
+                "group_label": "Overview",
             }
         )
 
         # Decision factors
-        for factor in cap.decision_factors:
+        factor_count = len(cap.decision_factors)
+        for i, factor in enumerate(cap.decision_factors):
             weight_text = f" (weight: {factor.weight})" if factor.weight else ""
             assertions.append(
                 {
@@ -44,26 +47,34 @@ def _capability_assertions(capabilities: list[Capability]) -> list[dict]:
                     ),
                     "capability_id": cap.id,
                     "field": f"factor_{factor.name}",
+                    "group": cap.name,
+                    "group_label": f"Decision Factors ({i + 1} of {factor_count})",
                 }
             )
 
         # Heuristics
-        for heuristic in cap.heuristics:
+        heuristic_count = len(cap.heuristics)
+        for i, heuristic in enumerate(cap.heuristics):
             assertions.append(
                 {
                     "text": (f"A rule of thumb for '{cap.name}': {heuristic}"),
                     "capability_id": cap.id,
                     "field": "heuristic",
+                    "group": cap.name,
+                    "group_label": f"Rules of Thumb ({i + 1} of {heuristic_count})",
                 }
             )
 
         # Anti-patterns
-        for anti in cap.anti_patterns:
+        anti_count = len(cap.anti_patterns)
+        for i, anti in enumerate(cap.anti_patterns):
             assertions.append(
                 {
                     "text": (f"A bad practice for '{cap.name}' would be: {anti}"),
                     "capability_id": cap.id,
                     "field": "anti_pattern",
+                    "group": cap.name,
+                    "group_label": f"Anti-Patterns ({i + 1} of {anti_count})",
                 }
             )
 
@@ -81,6 +92,7 @@ class CapabilitiesScreen(Screen):
     CapabilitiesScreen .main-content {
         width: 1fr;
         padding: 1 2;
+        overflow-y: auto;
     }
 
     CapabilitiesScreen .screen-title {
@@ -88,6 +100,13 @@ class CapabilitiesScreen(Screen):
         text-align: center;
         padding: 1 0;
         color: $primary;
+    }
+
+    CapabilitiesScreen .group-header {
+        text-style: italic;
+        color: $secondary;
+        text-align: center;
+        padding: 0 0 1 0;
     }
 
     CapabilitiesScreen .assertion-counter {
@@ -112,6 +131,7 @@ class CapabilitiesScreen(Screen):
         with Horizontal():
             with Vertical(classes="main-content"):
                 yield Static("Your Expertise — Decision Logic", classes="screen-title")
+                yield Static("", id="group-header", classes="group-header")
                 yield Static("", id="counter", classes="assertion-counter")
                 yield AssertionWidget(assertion_text="", id="assertion")
                 yield ResponseWidget(id="response")
@@ -120,6 +140,10 @@ class CapabilitiesScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
+        self.app.update_section_progress("capabilities", 0, len(self._assertions))  # type: ignore[attr-defined]
+        spine = self.query_one("#progress-spine", ProgressSpineWidget)
+        spine.set_active("capabilities")
+        spine.set_counts(self.app.progress_state)  # type: ignore[attr-defined]
         self._show_current()
 
     def _show_current(self) -> None:
@@ -127,6 +151,9 @@ class CapabilitiesScreen(Screen):
             self.app.switch_screen("skills")
             return
         assertion = self._assertions[self._current_index]
+        group = assertion.get("group", "")
+        group_label = assertion.get("group_label", "")
+        self.query_one("#group-header", Static).update(f"{group} — {group_label}" if group else "")
         self.query_one("#assertion", AssertionWidget).update_assertion(
             text=assertion["text"],
         )
@@ -136,6 +163,11 @@ class CapabilitiesScreen(Screen):
         self.query_one("#response", ResponseWidget).focus()
 
     def _advance(self) -> None:
+        confirmed = sum(1 for v in self._responses.values() if v in ("confirmed", "corrected"))
+        self.app.update_section_progress("capabilities", confirmed, len(self._assertions))  # type: ignore[attr-defined]
+        self.query_one("#progress-spine", ProgressSpineWidget).set_counts(
+            self.app.progress_state  # type: ignore[attr-defined]
+        )
         self._current_index += 1
         self._show_current()
 
