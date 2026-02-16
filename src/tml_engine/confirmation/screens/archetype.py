@@ -129,7 +129,7 @@ class ArchetypeScreen(Screen):
         self._current_index += 1
         self._show_current()
 
-    def _record_provenance(self, action: str, corrected_text: str | None = None) -> None:
+    async def _record_provenance(self, action: str, corrected_text: str | None = None) -> None:
         """Record a confirmation action as Provenance on the Declaration."""
         assertion = self._assertions[self._current_index]
         declaration = self.app.declaration  # type: ignore[attr-defined]
@@ -156,9 +156,18 @@ class ArchetypeScreen(Screen):
         )
         declaration.provenance.append(entry)
 
-    def on_response_widget_confirmed(self, event: ResponseWidget.Confirmed) -> None:
+        await self.app.persist_confirmation(
+            primitive_id=self.archetype.id,
+            primitive_type="archetype",
+            scope_id=self.archetype.scope_id,
+            status=action,
+            actor_email=actor.email,
+            provenance_entry=entry,
+        )
+
+    async def on_response_widget_confirmed(self, event: ResponseWidget.Confirmed) -> None:
         self._responses[self._current_index] = "confirmed"
-        self._record_provenance("confirmed")
+        await self._record_provenance("confirmed")
         self._advance()
 
     def on_response_widget_correction_requested(
@@ -167,15 +176,15 @@ class ArchetypeScreen(Screen):
         assertion = self._assertions[self._current_index]
         self.query_one("#editor", InlineEditorWidget).show(assertion["text"])
 
-    def on_response_widget_flagged(self, event: ResponseWidget.Flagged) -> None:
+    async def on_response_widget_flagged(self, event: ResponseWidget.Flagged) -> None:
         self._responses[self._current_index] = "flagged"
-        self._record_provenance("flagged")
+        await self._record_provenance("flagged")
         self._advance()
 
-    def on_inline_editor_widget_submitted(self, event: InlineEditorWidget.Submitted) -> None:
+    async def on_inline_editor_widget_submitted(self, event: InlineEditorWidget.Submitted) -> None:
         self._responses[self._current_index] = "corrected"
         self._corrections[self._current_index] = event.corrected_text
-        self._record_provenance("corrected", corrected_text=event.corrected_text)
+        await self._record_provenance("corrected", corrected_text=event.corrected_text)
         self._advance()
 
     def on_inline_editor_widget_cancelled(self, event: InlineEditorWidget.Cancelled) -> None:

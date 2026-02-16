@@ -12,7 +12,12 @@ from datetime import UTC, datetime
 
 from tml_engine.extractors.base import RawExtractionResult
 from tml_engine.models.declaration import Declaration
-from tml_engine.models.identity import ExtractionSource, HumanIdentity
+from tml_engine.models.identity import (
+    ConfirmationRecord,
+    ConfirmationStatus,
+    ExtractionSource,
+    HumanIdentity,
+)
 from tml_engine.models.primitives import (
     Archetype,
     Binding,
@@ -362,6 +367,27 @@ async def build_declaration_from_storage(
             continue
 
         instance = model_class.model_validate(data)
+
+        # Reconstruct confirmation status from DB columns if not already in data
+        conf_status = row.get("confirmation_status")
+        if (
+            conf_status
+            and conf_status != "unconfirmed"
+            and hasattr(instance, "confirmation")
+            and instance.confirmation is None
+        ):
+            confirmed_by_str = row.get("confirmed_by") or "unknown@unknown"
+            confirmed_at_raw = row.get("confirmed_at")
+            confirmed_at = (
+                datetime.fromisoformat(confirmed_at_raw)
+                if isinstance(confirmed_at_raw, str)
+                else confirmed_at_raw or datetime.now(UTC)
+            )
+            instance.confirmation = ConfirmationRecord(
+                status=ConfirmationStatus(conf_status),
+                confirmed_by=HumanIdentity(email=confirmed_by_str, display_name=confirmed_by_str),
+                confirmed_at=confirmed_at,
+            )
 
         if ptype == "archetype":
             archetypes.append(instance)

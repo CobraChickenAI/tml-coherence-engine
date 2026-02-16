@@ -31,6 +31,7 @@ def _flow_assertions(connectors: list[Connector], bindings: list[Binding]) -> li
                 ),
                 "primitive_id": conn.id,
                 "primitive_type": "connector",
+                "scope_id": conn.scope_id,
                 "field": "connector",
             }
         )
@@ -46,6 +47,7 @@ def _flow_assertions(connectors: list[Connector], bindings: list[Binding]) -> li
                 ),
                 "primitive_id": bind.id,
                 "primitive_type": "binding",
+                "scope_id": bind.scope_id,
                 "field": "binding",
             }
         )
@@ -134,13 +136,14 @@ class FlowsScreen(Screen):
         self._current_index += 1
         self._show_current()
 
-    def _record_provenance(self, action: str, corrected_text: str | None = None) -> None:
+    async def _record_provenance(self, action: str, corrected_text: str | None = None) -> None:
         """Record a confirmation action as Provenance on the Declaration."""
         assertion = self._assertions[self._current_index]
         declaration = self.app.declaration  # type: ignore[attr-defined]
         actor = declaration.scope.owner_identity
         primitive_id = assertion["primitive_id"]
         primitive_type = assertion["primitive_type"]
+        scope_id = assertion["scope_id"]
         # Find the actual primitive to attach the confirmation
         if primitive_type == "connector":
             primitive = next(c for c in self.connectors if c.id == primitive_id)
@@ -159,7 +162,7 @@ class FlowsScreen(Screen):
         )
         primitive.confirmation = record
         entry = make_provenance_entry(
-            scope_id=primitive.scope_id,
+            scope_id=scope_id,
             primitive_id=primitive.id,
             primitive_type=primitive_type,
             action=action,
@@ -168,9 +171,18 @@ class FlowsScreen(Screen):
         )
         declaration.provenance.append(entry)
 
-    def on_response_widget_confirmed(self, event: ResponseWidget.Confirmed) -> None:
+        await self.app.persist_confirmation(
+            primitive_id=primitive.id,
+            primitive_type=primitive_type,
+            scope_id=scope_id,
+            status=action,
+            actor_email=actor.email,
+            provenance_entry=entry,
+        )
+
+    async def on_response_widget_confirmed(self, event: ResponseWidget.Confirmed) -> None:
         self._responses[self._current_index] = "confirmed"
-        self._record_provenance("confirmed")
+        await self._record_provenance("confirmed")
         self._advance()
 
     def on_response_widget_correction_requested(
@@ -179,15 +191,15 @@ class FlowsScreen(Screen):
         assertion = self._assertions[self._current_index]
         self.query_one("#editor", InlineEditorWidget).show(assertion["text"])
 
-    def on_response_widget_flagged(self, event: ResponseWidget.Flagged) -> None:
+    async def on_response_widget_flagged(self, event: ResponseWidget.Flagged) -> None:
         self._responses[self._current_index] = "flagged"
-        self._record_provenance("flagged")
+        await self._record_provenance("flagged")
         self._advance()
 
-    def on_inline_editor_widget_submitted(self, event: InlineEditorWidget.Submitted) -> None:
+    async def on_inline_editor_widget_submitted(self, event: InlineEditorWidget.Submitted) -> None:
         self._responses[self._current_index] = "corrected"
         self._corrections[self._current_index] = event.corrected_text
-        self._record_provenance("corrected", corrected_text=event.corrected_text)
+        await self._record_provenance("corrected", corrected_text=event.corrected_text)
         self._advance()
 
     def on_inline_editor_widget_cancelled(self, event: InlineEditorWidget.Cancelled) -> None:

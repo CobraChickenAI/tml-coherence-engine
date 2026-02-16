@@ -151,7 +151,7 @@ class SummaryScreen(Screen):
             yield ProgressSpineWidget(id="progress-spine")
         yield Footer()
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
+    async def on_button_pressed(self, event: Button.Pressed) -> None:
         from pathlib import Path
 
         if event.button.id == "btn-json":
@@ -167,4 +167,5 @@ class SummaryScreen(Screen):
             export_declaration_yaml(self.declaration, out)
             self.notify(f"Exported to {out}", title="YAML Export")
         elif event.button.id == "btn-done":
+            await self.app.persist_declaration_snapshot()  # type: ignore[attr-defined]
             self.app.exit()

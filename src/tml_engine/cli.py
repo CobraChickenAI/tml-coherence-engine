@@ -259,10 +259,13 @@ def confirm(
         console.print("[dim]Launching with mock data...[/dim]")
         run_confirmation(declaration=None)
     else:
+        from tml_engine.confirmation.app import run_confirmation_async
         from tml_engine.pipeline import build_declaration_from_storage, find_scope_for_identity
         from tml_engine.storage.sqlite import StorageEngine
 
-        async def _load_declaration():
+        _ensure_db_dir(db)
+
+        async def _confirm() -> None:
             storage = StorageEngine(db)
             await storage.initialize()
             try:
@@ -278,13 +281,20 @@ def confirm(
                     console.print(f"[red]Could not build Declaration for scope {scope_id}[/red]")
                     raise typer.Exit(1)
 
-                return declaration
+                # Resolve identity ID for provenance tracking
+                identity_row = await storage.get_identity_by_email(identity)
+                identity_id = identity_row["id"] if identity_row else identity
+
+                console.print(f"[dim]Launching confirmation for {identity}...[/dim]")
+                await run_confirmation_async(
+                    declaration=declaration,
+                    storage=storage,
+                    identity_id=identity_id,
+                )
             finally:
                 await storage.close()
 
-        declaration = asyncio.run(_load_declaration())
-        console.print(f"[dim]Launching confirmation for {identity}...[/dim]")
-        run_confirmation(declaration=declaration)
+        asyncio.run(_confirm())
 
 
 @app.command()
