@@ -41,12 +41,13 @@ class DomainsScreen(Screen):
     """Confirms Domain primitives — accountability areas."""
 
     DEFAULT_CSS = """
-    DomainsScreen {
-        layout: horizontal;
+    DomainsScreen Horizontal {
+        height: 1fr;
     }
 
     DomainsScreen .main-content {
         width: 1fr;
+        height: 1fr;
         padding: 1 2;
         overflow-y: auto;
     }

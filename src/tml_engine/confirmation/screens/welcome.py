@@ -15,12 +15,13 @@ class WelcomeScreen(Screen):
     """First screen: shows who is being confirmed and the scope of the Declaration."""
 
     DEFAULT_CSS = """
-    WelcomeScreen {
-        layout: horizontal;
+    WelcomeScreen Horizontal {
+        height: 1fr;
     }
 
     WelcomeScreen .main-content {
         width: 1fr;
+        height: 1fr;
         padding: 2 4;
         overflow-y: auto;
     }

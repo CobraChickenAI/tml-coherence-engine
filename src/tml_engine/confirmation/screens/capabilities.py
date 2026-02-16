@@ -85,12 +85,13 @@ class CapabilitiesScreen(Screen):
     """Confirms Capability primitives — decision logic, factors, heuristics."""
 
     DEFAULT_CSS = """
-    CapabilitiesScreen {
-        layout: horizontal;
+    CapabilitiesScreen Horizontal {
+        height: 1fr;
     }
 
     CapabilitiesScreen .main-content {
         width: 1fr;
+        height: 1fr;
         padding: 1 2;
         overflow-y: auto;
     }

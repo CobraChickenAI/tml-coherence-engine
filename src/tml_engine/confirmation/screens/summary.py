@@ -15,12 +15,13 @@ class SummaryScreen(Screen):
     """Final screen: shows the complete Declaration summary and export options."""
 
     DEFAULT_CSS = """
-    SummaryScreen {
-        layout: horizontal;
+    SummaryScreen Horizontal {
+        height: 1fr;
     }
 
     SummaryScreen .main-content {
         width: 1fr;
+        height: 1fr;
         padding: 2 4;
         overflow-y: auto;
     }

@@ -69,12 +69,13 @@ class ArchetypeScreen(Screen):
     """Confirms the Archetype primitive — role, responsibilities, authority."""
 
     DEFAULT_CSS = """
-    ArchetypeScreen {
-        layout: horizontal;
+    ArchetypeScreen Horizontal {
+        height: 1fr;
     }
 
     ArchetypeScreen .main-content {
         width: 1fr;
+        height: 1fr;
         padding: 1 2;
         overflow-y: auto;
     }

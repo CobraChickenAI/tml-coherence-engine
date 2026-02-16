@@ -44,12 +44,13 @@ class SkillsScreen(Screen):
     """Confirms SkillReferences within Capabilities."""
 
     DEFAULT_CSS = """
-    SkillsScreen {
-        layout: horizontal;
+    SkillsScreen Horizontal {
+        height: 1fr;
     }
 
     SkillsScreen .main-content {
         width: 1fr;
+        height: 1fr;
         padding: 1 2;
         overflow-y: auto;
     }

@@ -42,12 +42,13 @@ class EdgesScreen(Screen):
     """Confirms ExceptionRules within Capabilities — edge cases and overrides."""
 
     DEFAULT_CSS = """
-    EdgesScreen {
-        layout: horizontal;
+    EdgesScreen Horizontal {
+        height: 1fr;
     }
 
     EdgesScreen .main-content {
         width: 1fr;
+        height: 1fr;
         padding: 1 2;
         overflow-y: auto;
     }

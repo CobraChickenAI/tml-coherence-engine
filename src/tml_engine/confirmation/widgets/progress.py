@@ -18,7 +18,7 @@ class ProgressSpineWidget(Widget):
     DEFAULT_CSS = """
     ProgressSpineWidget {
         width: 32;
-        height: 100%;
+        height: 1fr;
         padding: 1;
         border-left: solid $primary;
         background: $surface;

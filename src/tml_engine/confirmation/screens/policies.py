@@ -43,12 +43,13 @@ class PoliciesScreen(Screen):
     """Confirms Policy primitives — rules, constraints, guardrails."""
 
     DEFAULT_CSS = """
-    PoliciesScreen {
-        layout: horizontal;
+    PoliciesScreen Horizontal {
+        height: 1fr;
     }
 
     PoliciesScreen .main-content {
         width: 1fr;
+        height: 1fr;
         padding: 1 2;
         overflow-y: auto;
     }

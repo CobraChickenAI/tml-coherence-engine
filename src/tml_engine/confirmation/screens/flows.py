@@ -65,12 +65,13 @@ class FlowsScreen(Screen):
     """Confirms Connectors and Bindings — how expertise flows between domains."""
 
     DEFAULT_CSS = """
-    FlowsScreen {
-        layout: horizontal;
+    FlowsScreen Horizontal {
+        height: 1fr;
     }
 
     FlowsScreen .main-content {
         width: 1fr;
+        height: 1fr;
         padding: 1 2;
         overflow-y: auto;
     }
